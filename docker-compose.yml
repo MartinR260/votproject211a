@@ -1,0 +1,57 @@
+version: '3.2'
+
+services:
+  mariadb1:
+    image: mariadb:11.4.2
+    env_file:
+      - database.env
+    ports:
+      - "3307:3306"
+    # volumes (dont work):
+    #   - mariadb1-data:/var/lib/mysql
+    #   - mariadb1-galera.cnf:/etc/mysql/conf.d
+
+  mariadb2:
+    image: mariadb:11.4.2
+    env_file:
+      - database.env
+    ports:
+      - "3308:3306"
+    depends_on:
+      - mariadb1
+    # volumes (dont work):
+    #   - mariadb2-data:/var/lib/mysql
+    #   - mariadb2-galera.cnf:/etc/mysql/conf.d
+
+  maxscale:
+    image: mariadb/maxscale:24.02.1
+    ports:
+      - "3306:3306"
+      - "8989:8989" 
+    depends_on:
+      - mariadb1
+      - mariadb2
+
+  keycloak:
+    image: keycloak/keycloak:24.0.4
+    env_file:
+      - keycloak.env
+    ports:
+      - "8080:8080"
+    command: start-dev
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - maxscale
+      - keycloak
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+      - keycloak
